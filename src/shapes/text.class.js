@@ -504,6 +504,230 @@
       }
       return maxWidth;
     },
+	
+	
+	
+    /**
+     * @private
+     * @param {String} method Method name ("fillText" or "strokeText")
+     * @param {CanvasRenderingContext2D} ctx Context to render on
+     * @param {String} chars Chars to render
+     * @param {Number} left Left position of text
+     * @param {Number} top Top position of text
+     */
+    _renderCharsRtl: function(method, ctx, chars, left, top) {
+
+      // remove Text word from method var
+      var shortM = method.slice(0, -4), char, width;
+      if (this[shortM].toLive) {
+        var offsetX = -this.width / 2 + this[shortM].offsetX || 0,
+            offsetY = -this.height / 2 + this[shortM].offsetY || 0;
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+        left -= offsetX;
+        top -= offsetY;
+      }
+      if (this.charSpacing !== 0) {
+        var additionalSpace = this._getWidthOfCharSpacing();
+        chars = chars.split('');
+        for (var i = 0, len = chars.length; i < len; i++) {
+          
+          char = chars[i];
+          width = ctx.measureText(char).width + additionalSpace;
+          ctx[method](char, left, top);
+          left += width > 0 ? width : 0;
+        }
+      }
+      else {
+          var dic = [];
+
+          var hebrewCharCodes = 
+            [
+              1488, 1489,
+              1490, 1491, 1492, 1493, 1494, 1495, 1496, 1497, 1498, 1499, 
+              1500, 1501, 1502, 1503, 1504, 1505, 1506, 1507, 1508, 1509, 
+              1510, 1511, 1512, 1513, 1514
+            ];
+          var neutralCharCodes = 
+            [
+              32, 33, 34, 35, 36, 37, 38, 39, 
+              40, 41, 42, 43, 44, 45, 46, 47,
+              58, 59, 
+              60, 61, 62, 63, 64, 
+              123, 125
+            ];
+          var numbersCharCodes = [48, 49, 50, 51, 52, 53 ,54 ,55 ,56 ,57];
+          var datesCharCodes = [33, 46, 47];
+          if (chars) {
+            chars = chars.split('');
+            
+            var temp = chars[0];
+            var lastDir = 
+              hebrewCharCodes.indexOf(chars[0].charCodeAt(0)) > -1 ? 'rtl' : 
+              neutralCharCodes.indexOf(chars[0].charCodeAt(0)) > -1 ? 'special' : 
+              numbersCharCodes.indexOf(chars[0].charCodeAt(0)) > -1 ? 'number' : 'ltr';
+
+            for (var i=1; i < chars.length; i++) {
+              if (hebrewCharCodes.indexOf(chars[i].charCodeAt(0)) > -1) {
+                if (lastDir == 'rtl') {
+                  temp += chars[i];
+                }
+                else {
+                  dic.push({
+                    chars: temp,
+                    dir: lastDir
+                  });
+                  temp = chars[i];
+                  lastDir = 'rtl'
+                }
+              }
+              else if (neutralCharCodes.indexOf(chars[i].charCodeAt(0)) > -1) {
+                if (lastDir == 'special') {
+                  temp += chars[i];
+                }
+                else {
+                  dic.push({
+                    chars: temp,
+                    dir: lastDir
+                  });
+                  temp = chars[i];
+                  lastDir = 'special'
+                }
+              }
+              else if (numbersCharCodes.indexOf(chars[i].charCodeAt(0)) > -1) {
+              if (lastDir == 'number') {
+                  temp += chars[i];
+                }
+                else {
+                  dic.push({
+                    chars: temp,
+                    dir: lastDir
+                  });
+                  temp = chars[i];
+                  lastDir = 'number'
+                };
+              }
+              else {
+                if (lastDir == 'ltr') {
+                  temp += chars[i];
+                }
+                else {
+                  dic.push({
+                    chars: temp,
+                    dir: lastDir
+                  });
+                  temp = chars[i];
+                  lastDir = 'ltr'
+                };
+              }
+
+              if (i == chars.length-1) {
+                dic.push({
+                    chars: temp,
+                    dir: lastDir
+                  });
+              }
+              
+            }
+          }
+          if (dic) {
+            //dates
+            for (var i=0; i < dic.length; i++) {
+               if (dic[i].dir == 'number') {
+                 dic[i].dir = 'ltr';
+               }
+            }
+
+            //join special between ltr
+            for (var i=1; i < dic.length-1; i++) {
+              if (dic[i].dir == 'special') {
+                if (dic[i-1].dir == 'ltr' && dic[i+1].dir == 'ltr') {
+                  dic[i].dir = 'ltr';
+                }
+                else {
+                  dic[i].dir = 'rtl';
+                }
+              }
+              if (i == dic.length-2) { //last element
+                if (dic[dic.length-1].dir == 'special') {
+                  dic[dic.length-1].dir = 'rtl';
+                }
+              }
+            }
+
+          //join same sets
+          var newDic = [];
+          newDic.push(dic[0]);
+          for (var i=1; i < dic.length; i++) {
+            if (dic[i].dir == newDic[newDic.length-1].dir) {
+              newDic[newDic.length-1].chars = newDic[newDic.length-1].chars.concat(dic[i].chars);
+            }
+            else {
+              newDic.push(dic[i]);
+            }
+          }
+
+          
+          dic = newDic;
+          Array.prototype.clean = function(deleteValue) {
+            for (var i = 0; i < this.length; i++) {
+              if (this[i] == deleteValue) {         
+                this.splice(i, 1);
+                i--;
+              }
+            }
+            return this;
+          };
+          dic.clean(undefined);
+          //reverse hebrew
+          for (var i=0; i < dic.length; i++) {
+            if (dic[i].dir == 'rtl') {
+              dic[i].chars = dic[i].chars.split('').reverse().join('');
+            }
+          }
+
+          String.prototype.replaceAt=function(index, replacement) {
+              return this.substr(0, index) + replacement+ this.substr(index + replacement.length);
+          }
+          //change direction of brackets
+          for (var i=0; i < dic.length; i++) { 
+            for (var j=0; j < dic[i].chars.length; j++) {
+              switch (dic[i].chars[j]) {
+                case '{':
+                  dic[i].chars = dic[i].chars.replaceAt(j, '}');
+                  break;
+                case '}':
+                  dic[i].chars = dic[i].chars.replaceAt(j, '{');
+                  break;
+                case '(':
+                  dic[i].chars = dic[i].chars.replaceAt(j, ')');
+                  break;
+                case ')':
+                  dic[i].chars = dic[i].chars.replaceAt(j, '(');
+                  break;
+                case '<':
+                  dic[i].chars = dic[i].chars.replaceAt(j, '>');
+                  break;
+                case '>':
+                  dic[i].chars = dic[i].chars.replaceAt(j, '<');
+                  break;
+              }
+            }
+            
+          }
+
+          for (var i = dic.length-1, len = 0; i >= len; i--) {
+            for (var j=0; j < dic[i].chars.length; j++) {
+                width = ctx.measureText(dic[i].chars[j]).width;
+                ctx[method](dic[i].chars[j], left, top);
+                left += width > 0 ? width : 0; 
+            }
+          }
+        }  
+      }
+      this[shortM].toLive && ctx.restore();
+    },
+
 
     /**
      * @private

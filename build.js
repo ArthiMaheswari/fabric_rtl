@@ -177,13 +177,8 @@ var filesToInclude = [
   'src/mixins/object_geometry.mixin.js',
   'src/mixins/object_stacking.mixin.js',
   'src/mixins/object.svg_export.js',
-  'src/mixins/stateful.mixin.js',
-  
-   'src/shapes/itextrtl.class.js',
-  'src/mixins/itextrtl_behavior.mixin.js',
-  'src/mixins/itextrtl_click_behavior.mixin.js',
- 'src/mixins/itextrtl_key_behavior.mixin.js',
-  'src/mixins/itextrtl.svg_export.js',
+  'src/mixins/stateful.mixin.js',  
+ 
 
   ifSpecifiedInclude('interaction', 'src/mixins/object_interactivity.mixin.js'),
 
